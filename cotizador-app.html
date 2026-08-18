@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cotizador Universal</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="Manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    
+    <!-- Telegram SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        :root {
+            --color-principal: #2c3e50;
+            --color-acento: #007bff;
+            --bg-body: #f5f7fa;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body {
+            background: var(--bg-body);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            transition: background 0.3s;
+        }
+        .hoja {
+            background: white;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            border-top: 8px solid var(--color-principal);
+            border-radius: 8px;
+        }
+        .barra-nicho {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        .barra-nicho select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+        .encabezado {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .datos-empresa { flex: 1; min-width: 200px; }
+        .datos-empresa input {
+            display: block;
+            width: 100%;
+            border: 1px dashed transparent;
+            padding: 4px;
+            font-size: 14px;
+            background: transparent;
+        }
+        .datos-empresa input.nombre-empresa {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--color-principal);
+            text-transform: uppercase;
+        }
+        .datos-empresa input:hover, .datos-empresa input:focus {
+            border-color: #ccc;
+            outline: none;
+            background: #f9f9f9;
+        }
+        .datos-cotizacion { text-align: right; width: 250px; }
+        .datos-cotizacion h2 {
+            margin: 0 0 10px 0;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 20px;
+        }
+        .grid-datos {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            align-items: center;
+            font-size: 14px;
+        }
+        .grid-datos input {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: right;
+        }
+        .condiciones {
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-left: 4px solid var(--color-acento);
+        }
+        .condiciones input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+            outline: none;
+        }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+        th {
+            background-color: var(--color-principal);
+            color: white;
+            padding: 10px;
+            text-align: left;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        td input {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid transparent;
+            background: transparent;
+        }
+        td input:hover, td input:focus { border-color: #ddd; background: #fafafa; outline: none; }
+        .col-cant { width: 12%; }
+        .col-desc { width: 48%; }
+        .col-precio { width: 18%; }
+        .col-importe { width: 22%; text-align: right; font-weight: bold; }
+        .col-accion { width: 5%; }
+        .seccion-inferior {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .consideraciones { flex: 1; min-width: 250px; font-size: 12px; color: #666; }
+        .consideraciones textarea {
+            width: 100%;
+            height: 80px;
+            border: 1px solid #eee;
+            padding: 10px;
+            resize: none;
+            font-family: inherit;
+            background: transparent;
+        }
+        .totales { width: 35%; min-width: 200px; }
+        .fila-total {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 14px;
+            border-bottom: 1px solid #eee;
+        }
+        .fila-total.gran-total {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--color-principal);
+            border-bottom: none;
+            margin-top: 5px;
+        }
+        .herramientas {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            flex: 1;
+            min-width: 120px;
+            transition: 0.2s;
+        }
+        .btn-add { background: #e9ecef; color: #333; }
+        .btn-print { background: var(--color-principal); color: white; }
+        .btn-gmail { background: #ea4335; color: white; }
+        .btn-save { background: #28a745; color: white; }
+        .btn-load { background: #ffc107; color: #333; }
+        .btn-share { background: var(--color-acento); color: white; }
+        @media print {
+            body { background: white; padding: 0; }
+            .hoja { box-shadow: none; padding: 0; max-width: 100%; border-top: 4px solid var(--color-principal); border-radius: 0; }
+            .no-print { display: none !important; }
+            input, textarea { border: none !important; background: transparent !important; }
+            td input { padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="hoja">
+    <!-- Selector de nicho -->
+    <div class="barra-nicho no-print">
+        <label>🏷️ Plantilla:</label>
+        <select id="select-nicho" onchange="aplicarNicho(this.value)">
+            <option value="cctv">CCTV / Seguridad</option>
+            <option value="herreria">Herrería</option>
+            <option value="ferreteria">Ferretería</option>
+            <option value="electricidad">Electricidad</option>
+            <option value="personalizada">Personalizada</option>
+        </select>
+    </div>
+
+    <div class="encabezado">
+        <div class="datos-empresa">
+            <input type="text" class="nombre-empresa" value="STELARIS" placeholder="Nombre de tu empresa">
+            <input type="text" value="San Francisco C.P. 78435" placeholder="Dirección">
+            <input type="text" value="(444) 1362026" placeholder="Teléfono">
+        </div>
+        
+        <div class="datos-cotizacion">
+            <h2>COTIZACIÓN</h2>
+            <div class="grid-datos">
+                <label>Fecha:</label>
+                <input type="date" id="fecha-cotizacion">
+                <label>No. Cotización:</label>
+                <input type="text" id="num-cotizacion" value="001" style="font-weight: bold;" readonly>
+            </div>
+        </div>
+    </div>
+
+    <div class="condiciones">
+        <label style="font-size: 11px; color: #666; text-transform: uppercase;">Condiciones Comerciales</label>
+        <input type="text" id="condiciones" value="60% de anticipo y 40% a la entrega" placeholder="Ej. 50% anticipo, 50% finiquito">
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th class="col-cant">Cant.</th>
+                <th class="col-desc">Descripción</th>
+                <th class="col-precio">P. Unitario</th>
+                <th class="col-importe" style="text-align: right;">Importe</th>
+                <th class="col-accion no-print"></th>
+            </tr>
+        </thead>
+        <tbody id="lista-productos"></tbody>
+    </table>
+    
+    <button class="btn btn-add no-print" onclick="agregarFila()">+ Agregar Concepto</button>
+
+    <div class="seccion-inferior">
+        <div class="consideraciones">
+            <label style="font-weight: bold;">Consideraciones / Garantía:</label>
+            <textarea id="consideraciones">La garantía será aplicada solamente por defectos de fabricación. Si se encuentra dañado el empaque o con aparente manipulación, no aplica.</textarea>
+        </div>
+        
+        <div class="totales">
+            <div class="fila-total">
+                <span>Subtotal</span>
+                <span id="txt-subtotal">$0.00</span>
+            </div>
+            <div class="fila-total">
+                <span>IVA (16%)</span>
+                <span id="txt-iva">$0.00</span>
+            </div>
+            <div class="fila-total gran-total">
+                <span>Total (MXN)</span>
+                <span id="txt-total">$0.00</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="herramientas no-print">
+        <button class="btn btn-print" onclick="window.print()">🖨️ PDF</button>
+        <button class="btn btn-gmail" onclick="enviarGmail()">✉️ Gmail</button>
+        <button class="btn btn-save" onclick="guardarCotizacion()">💾 Guardar</button>
+        <button class="btn btn-load" onclick="document.getElementById('input-file').click()">📂 Cargar</button>
+        <button class="btn btn-share" onclick="compartirTelegram()">📤 Compartir</button>
+    </div>
+    <input type="file" id="input-file" accept=".json" style="display:none" onchange="cargarCotizacion(event)">
+</div>
+
+<script>
+    // ===== Inicialización Telegram =====
+    let tg = null;
+    try {
+        tg = window.Telegram.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            document.documentElement.style.setProperty('--color-principal', tg.themeParams.button_color || '#2c3e50');
+            document.documentElement.style.setProperty('--color-acento', tg.themeParams.button_color || '#007bff');
+            document.documentElement.style.setProperty('--bg-body', tg.themeParams.bg_color || '#f5f7fa');
+            if (tg.initDataUnsafe?.user) {
+                const user = tg.initDataUnsafe.user;
+                const nombre = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                document.querySelector('.nombre-empresa').value = nombre || 'STELARIS';
+            }
+            tg.MainButton.setText('GUARDAR');
+            tg.MainButton.show();
+            tg.MainButton.onClick(guardarCotizacion);
+        }
+    } catch (e) { tg = null; }
+
+    const isTelegram = !!tg;
+
+    // ===== Formateo de moneda =====
+    const formatoMoneda = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const formatoNumero = new Intl.NumberFormat('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // ===== Nichos =====
+    const configNicho = {
+        cctv: {
+            nombreEmpresa: 'STELARIS',
+            direccion: 'San Francisco C.P. 78435',
+            telefono: '(444) 1362026',
+            condiciones: '60% de anticipo y 40% a la entrega',
+            consideraciones: 'Garantía de 1 año en equipo. La instalación no incluye obra civil.',
+            productos: [
+                { cant: '1pz', desc: 'DVR de 8 canales 5MP Lite con WizSense y H.265+', precio: 2380 },
+                { cant: '1serv', desc: 'Servicio de suministro, instalación y configuración', precio: 2900 }
+            ]
+        },
+        herreria: {
+            nombreEmpresa: 'Herrería MX',
+            direccion: 'Av. Principal 123, San Luis Potosí',
+            telefono: '(444) 567 8901',
+            condiciones: '50% anticipo, 50% contra entrega',
+            consideraciones: 'Trabajos garantizados por 6 meses. No incluye pintura.',
+            productos: [
+                { cant: '1pz', desc: 'Puerta de herrería tubular 2.00x2.50m', precio: 3500 },
+                { cant: '2pz', desc: 'Ventana de herrería 1.50x1.20m', precio: 1800 }
+            ]
+        },
+        ferreteria: {
+            nombreEmpresa: 'Ferretería Universal',
+            direccion: 'Calle 5 de Mayo #45',
+            telefono: '(444) 111 2233',
+            condiciones: 'Pago al contado',
+            consideraciones: 'Precios sujetos a cambio sin previo aviso. No se aceptan devoluciones después de 7 días.',
+            productos: [
+                { cant: '5kg', desc: 'Clavos 2 pulgadas', precio: 50 },
+                { cant: '2pz', desc: 'Cinta de aislar', precio: 25 }
+            ]
+        },
+        electricidad: {
+            nombreEmpresa: 'ElectroMex',
+            direccion: 'Blvd. Industrias 900',
+            telefono: '(444) 789 4561',
+            condiciones: '70% anticipo, 30% al terminar',
+            consideraciones: 'Instalaciones con garantía de 5 años. Material no incluido.',
+            productos: [
+                { cant: '1serv', desc: 'Instalación de centro de carga', precio: 1200 },
+                { cant: '10m', desc: 'Cable calibre 12', precio: 15 }
+            ]
+        },
+        personalizada: {
+            nombreEmpresa: '',
+            direccion: '',
+            telefono: '',
+            condiciones: '',
+            consideraciones: '',
+            productos: []
+        }
+    };
+
+    function aplicarNicho(id) {
+        const config = configNicho[id];
+        if (!config) return;
+        document.querySelector('.nombre-empresa').value = config.nombreEmpresa;
+        document.querySelectorAll('.datos-empresa input')[1].value = config.direccion;
+        document.querySelectorAll('.datos-empresa input')[2].value = config.telefono;
+        document.getElementById('condiciones').value = config.condiciones;
+        document.getElementById('consideraciones').value = config.consideraciones;
+        document.getElementById('lista-productos').innerHTML = '';
+        config.productos.forEach(prod => agregarFila(prod.cant, prod.desc, prod.precio));
+        calcular();
+    }
+
+    // Leer parámetro de URL (nicho)
+    const urlParams = new URLSearchParams(window.location.search);
+    const nichoInicial = urlParams.get('nicho') || 'cctv';
+    document.getElementById('select-nicho').value = nichoInicial;
+    aplicarNicho(nichoInicial);
+
+    // ===== Fecha y número de cotización =====
+    document.getElementById('fecha-cotizacion').valueAsDate = new Date();
+    let numCot = parseInt(localStorage.getItem('ultimoNumCotizacion') || '0') + 1;
+    localStorage.setItem('ultimoNumCotizacion', numCot);
+    document.getElementById('num-cotizacion').value = numCot.toString().padStart(3, '0');
+
+    // ===== Funciones de tabla =====
+    function agregarFila(cant = '1pz', desc = '', precio = 0) {
+        const tbody = document.getElementById('lista-productos');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" class="val-cant" value="${cant}" placeholder="1pz"></td>
+            <td><input type="text" class="val-desc" value="${desc}" placeholder="Descripción del producto o servicio"></td>
+            <td>
+                <div style="display:flex; align-items:center;">
+                    $ <input type="number" class="val-precio" value="${precio}" min="0" step="0.01" oninput="calcular()" style="margin-left:4px;">
+                </div>
+            </td>
+            <td class="col-importe" style="vertical-align: middle;">$<span class="txt-importe">0.00</span></td>
+            <td class="no-print"><button onclick="this.closest('tr').remove(); calcular()" style="cursor:pointer; color:red; border:none; background:transparent;">❌</button></td>
+        `;
+        tbody.appendChild(tr);
+        calcular();
+    }
+
+    function calcular() {
+        const filas = document.querySelectorAll('#lista-productos tr');
+        let subtotal = 0;
+        filas.forEach(fila => {
+            const cantRaw = fila.querySelector('.val-cant').value;
+            const cant = parseFloat(cantRaw.replace(/[^0-9.]/g, '')) || 1;
+            const precio = parseFloat(fila.querySelector('.val-precio').value) || 0;
+            const importe = cant * precio;
+            fila.querySelector('.txt-importe').textContent = formatoNumero.format(importe);
+            subtotal += importe;
+        });
+        const iva = subtotal * 0.16;
+        const total = subtotal + iva;
+        document.getElementById('txt-subtotal').textContent = formatoMoneda.format(subtotal);
+        document.getElementById('txt-iva').textContent = formatoMoneda.format(iva);
+        document.getElementById('txt-total').textContent = formatoMoneda.format(total);
+    }
+
+    // ===== Guardar / Cargar =====
+    function guardarCotizacion() {
+        const cotizacion = {
+            empresa: document.querySelector('.nombre-empresa').value,
+            direccion: document.querySelectorAll('.datos-empresa input')[1].value,
+            telefono: document.querySelectorAll('.datos-empresa input')[2].value,
+            fecha: document.getElementById('fecha-cotizacion').value,
+            numero: document.getElementById('num-cotizacion').value,
+            condiciones: document.getElementById('condiciones').value,
+            consideraciones: document.getElementById('consideraciones').value,
+            productos: []
+        };
+        document.querySelectorAll('#lista-productos tr').forEach(fila => {
+            cotizacion.productos.push({
+                cant: fila.querySelector('.val-cant').value,
+                desc: fila.querySelector('.val-desc').value,
+                precio: fila.querySelector('.val-precio').value
+            });
+        });
+        // Guardar en localStorage
+        const historial = JSON.parse(localStorage.getItem('cotizaciones') || '[]');
+        historial.push(cotizacion);
+        localStorage.setItem('cotizaciones', JSON.stringify(historial));
+        // Descargar JSON
+        const blob = new Blob([JSON.stringify(cotizacion, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cotizacion_${cotizacion.numero}.json`;
+        a.click();
+        if (tg) tg.showPopup({ message: 'Cotización guardada correctamente' });
+        else alert('Cotización guardada');
+    }
+
+    function cargarCotizacion(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const datos = JSON.parse(e.target.result);
+                document.querySelector('.nombre-empresa').value = datos.empresa || '';
+                document.querySelectorAll('.datos-empresa input')[1].value = datos.direccion || '';
+                document.querySelectorAll('.datos-empresa input')[2].value = datos.telefono || '';
+                document.getElementById('fecha-cotizacion').value = datos.fecha || new Date().toISOString().split('T')[0];
+                document.getElementById('num-cotizacion').value = datos.numero || '001';
+                document.getElementById('condiciones').value = datos.condiciones || '';
+                document.getElementById('consideraciones').value = datos.consideraciones || '';
+                document.getElementById('lista-productos').innerHTML = '';
+                datos.productos.forEach(prod => agregarFila(prod.cant, prod.desc, prod.precio));
+                calcular();
+            } catch (error) {
+                alert('Error al leer el archivo JSO
